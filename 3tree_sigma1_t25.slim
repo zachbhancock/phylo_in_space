@@ -1,0 +1,185 @@
+initialize() {
+    initializeSLiMModelType("nonWF");
+    initializeSLiMOptions(dimensionality="xy");
+    initializeTreeSeq();
+    
+    defineConstant("W", 68.0);  // width of the simulated area 
+    catn(c("W =", 68));
+    defineConstant("H", 20); // height
+    catn(c("H =", H));
+    defineConstant("SIGMA", 1.0);
+    defineConstant("K", 5);  // carrying-capacity per unit square (roughly)
+    catn(c("SIGMA =", SIGMA));
+    catn(c("K =", K));
+    defineConstant("SD", SIGMA);  // sigma_D, the dispersal distance
+    catn(c("SD =", SD));
+    defineConstant("SI", 0.25);  // sigma_I, the spatial interaction distance
+    catn(c("SI =", SI));
+    defineConstant("SM", SIGMA);  // sigma_M, the mate choice distance
+    catn(c("SM =", SM));
+    defineConstant("G", 1e9);  // genome length
+    catn(c("G =", G));
+    defineConstant("FECUN", 2); // mean fecundity
+    catn(c("FECUN =", FECUN));
+    defineConstant("RHO", FECUN/((1+FECUN) * K)); // constant in spatial competition function
+    defineConstant("Age", c(0.0, 1.0)); //force WF model
+
+    initializeMutationType("m1", 0.5, "g", 0.0, 2);
+    initializeGenomicElementType("g1", m1, 1.0);
+    initializeGenomicElement(g1, 0, G-1);
+    initializeMutationRate(0.0);
+    initializeRecombinationRate(1e-9);
+    
+    // spatial competition
+    initializeInteractionType(1, "xy", reciprocal=T, maxDistance=SI * 3);
+    i1.setInteractionFunction("n", 1.0/(2*PI*SI^2), SI);
+    
+    // mate choice
+    initializeInteractionType(2, "xy", reciprocal=T, maxDistance=SM * 3);
+    i2.setInteractionFunction("n", 1.0/(2*PI*SM^2), SM);
+}
+
+reproduction() {
+	mate = i2.drawByStrength(individual, 1);
+    if (mate.size()) {
+        nOff = rpois(1, FECUN);
+        individual.tag = individual.tag + nOff;
+        for (i in seqLen(nOff)) {
+            pos = individual.spatialPosition + runif(2, -3*SD, 3*SD);
+            if (p1.pointInBounds(pos)) {
+            	offspring = subpop.addCrossed(individual, mate);
+          		offspring.setSpatialPosition(pos);
+          		offspring.tag = 0;
+          	}
+        }
+    }
+    return;
+}
+
+
+1 early() {
+    sim.addSubpop("p1", asInteger(K * H * W));
+    p1.setSpatialBounds(c(0, 0, W, H));
+    // random initial positions
+    for (ind in p1.individuals) {
+        ind.setSpatialPosition(p1.pointUniform());
+        ind.tag = 0;
+    }
+    i1.evaluate();
+
+  // make the spatial map:
+    g = 1.0; // good habitat
+    d = 0.0; // contracting habitat
+    defineConstant("mapValues",
+      c(g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g));
+    p1.defineSpatialMap("Kmap", "xy", c(68, 20), mapValues, interpolate=T,
+        valueRange=c(d, g), colors=c("blue", "green"));
+
+}
+
+early() {
+    i1.evaluate(p1);
+    inds = p1.individuals;
+    ages = inds.age;
+    mortality = Age[ages];
+    survival = 1 - mortality;
+    competition = i1.totalOfNeighborStrengths(inds);
+    // record strength of competition in the tagF
+    inds.tagF = competition;
+    // inds.fitnessScaling = pmin(0.95, 1/(1 + RHO * competition));    
+    // adjust for local habitat quality
+    for (ind in inds) {
+        Klocal = p1.spatialMapValue("Kmap", ind.spatialPosition);
+        ind.fitnessScaling = pmin(0.95, 1/((1 + RHO * ind.tagF) / Klocal));
+    }
+    // avoid edge effects
+    inds.fitnessScaling = survival * inds.fitnessScaling * pmin(sqrt(inds.x/SI), 1.0) * pmin(sqrt(inds.y/SI), 1.0) * pmin(sqrt((W - inds.x)/SI), 1.0) * pmin(sqrt((W - inds.y)/SI), 1.0);
+    }
+
+1: late() {
+   // to be ready for mate choice
+   i2.evaluate(p1);
+}
+
+10000 late(){
+
+    g = 1.0; // good habitat
+    d = 0.0; // contracting habitat
+    defineConstant("mapValues2",
+      c(g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g));
+    p1.defineSpatialMap("Kmap", "xy", c(68, 20), mapValues2, interpolate=T,
+        valueRange=c(d, g), colors=c("blue", "green"));
+        catn("1st split.");
+        }
+        
+11000 late(){
+
+    g = 1.0; // good habitat
+    d = 0.0; // contracting habitat
+    defineConstant("mapValues4",
+      c(g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g,
+        g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, d, d, d, d, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g, g));
+    p1.defineSpatialMap("Kmap", "xy", c(68, 20), mapValues4, interpolate=T,
+        valueRange=c(d, g), colors=c("blue", "green"));
+        catn("2nd split.");
+        }
+
+12000 late(){
+sim.treeSeqOutput("3tree_sigma1_t25_10.trees");
+catn("Done.");}
